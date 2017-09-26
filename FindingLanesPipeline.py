@@ -180,10 +180,10 @@ for idx, filename in enumerate(testImages):
     preprocessed[masked] = 255
     mpimg.imsave('./test_images/preprocessed_'+imagename,preprocessed,cmap='gray')  
     
-    btm_width = 0.76 # 0.57  #0.76
+    btm_width =  0.57  #0.76
     top_width = 0.08 
-    top_pct = 0.62 #0.63  # 0.62
-    btm_pct = 0.935  #0.914 # 0.935
+    top_pct = 0.63  # 0.62
+    btm_pct = 0.914 # 0.935
     src = np.float32([ [width * (0.5-top_width/2), height*top_pct], [width*(0.5+top_width/2), height*top_pct], \
                       [width * (0.5-btm_width/2), height*btm_pct], [width*(0.5+btm_width/2), height*btm_pct] ])
     offset = width*0.33  #width* (0.5-btm_width/2)
