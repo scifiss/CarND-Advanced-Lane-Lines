@@ -95,22 +95,7 @@ def mag_thresh(img, sobel_kernel=3, thresh=(0, 255)):
     
     return binary_output
 
-
-
-
-#img = mpimg.imread('camera_cal\calibration3.jpg')
-#top_down, perspective_M = corners_unwarp(image, nx, ny, mtx, dist)
-#f, (ax1, ax2) = plt.subplots(1, 2, figsize=(24, 9))
-#f.tight_layout()
-#ax1.imshow(image)
-#ax1.set_title('Original Image', fontsize=50)
-#ax2.imshow(top_down)
-#ax2.set_title('Undistorted and Warped Image', fontsize=50)
-#plt.subplots_adjust(left=0., right=1, top=0.9, bottom=0.)
-
-
 testImages = glob.glob('./test_images/test*.jpg')
-
 
 for idx, filename in enumerate(testImages):
     img = mpimg.imread( filename)  # read as RGB
@@ -119,8 +104,7 @@ for idx, filename in enumerate(testImages):
 #----------------------------------------
 ## distortion correction
 #----------------------------------------    
-    undist = cv2.undistort(img, mtx, dist, None, mtx) # show as RGB
-    mpimg.imsave('./test_images/Undistorted_'+imagename,undist)
+    undist = cv2.undistort(img, mtx, dist, None, mtx) # show as RGB  
     
 #----------------------------------------
 ## gradient & color threshold
@@ -129,16 +113,15 @@ for idx, filename in enumerate(testImages):
     preprocessed = np.zeros_like(img[:,:,0])
     # gradient on x and y direction
     gradx = abs_sobel_thresh(img, orient='x', sobel_kernel=3, thresh=(12, 255))    
-    mpimg.imsave('./test_images/gradx_'+imagename,gradx,cmap='gray')  
+   
     grady = abs_sobel_thresh(img, orient='y', sobel_kernel=3, thresh=(25, 255))   
-    mpimg.imsave('./test_images/grady_'+imagename,grady,cmap='gray')  
+    
     # magnitude of the gradient at 45degree
     mag_binary = mag_thresh(img, sobel_kernel=3, thresh=(30, 100))
-    mpimg.imsave('./test_images/mag_'+imagename,mag_binary,cmap='gray')  
+   
     # direction of the gradient
     dir_binary = dir_threshold(img, sobel_kernel = 15, thresh=(0.5,1))
-    mpimg.imsave('./test_images/dir_'+imagename,dir_binary,cmap='gray')  
-
+    
     # color threshold on saturation and value channel
     col_binary = color_threshold(img, sthresh=(100,255),vthresh=(50,255))
     masked = ((gradx==1) & (grady==1)) | (col_binary==1)
@@ -157,17 +140,9 @@ for idx, filename in enumerate(testImages):
 #----------------------------------------
 ## perspective transform
 #----------------------------------------
-    M = cv2.getPerspectiveTransform(src, dst)
-    #Minv = cv2.getPerspectiveTransform(dst, src)
+    M = cv2.getPerspectiveTransform(src, dst) 
     warped = cv2.warpPerspective(preprocessed, M, ( width, height), flags=cv2.INTER_LINEAR)
     mpimg.imsave('./test_images/warped_'+imagename,warped,cmap='gray')  
-
-
-
-
-
-    
-
 
     
 #----------------------------------------
