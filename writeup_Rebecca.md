@@ -13,7 +13,8 @@ The goals / steps of this project are the following:
 
 [//]: # (Image References)
 
-[image1]: ./examples/undistort_output.png "Undistorted"
+[image0]: ./output_images/FoundCorners_calibration3.jpg "corners"
+[image1]: ./output_images/Undist_calibration3.jpg "Undistorted"
 [image2]: ./test_images/test1.jpg "Road Transformed"
 [image3]: ./examples/binary_combo_example.jpg "Binary Example"
 [image4]: ./examples/warped_straight_lines.jpg "Warp Example"
@@ -37,13 +38,36 @@ You're reading it!
 
 #### 1. Briefly state how you computed the camera matrix and distortion coefficients. Provide an example of a distortion corrected calibration image.
 
-The code for this step is contained in the first code cell of the IPython notebook located in "./examples/example.ipynb" (or in lines # through # of the file called `some_file.py`).  
+The code for this step is contained in the file `CameraCalibration.py` in lines 22 through 59.  
 
-I start by preparing "object points", which will be the (x, y, z) coordinates of the chessboard corners in the world. Here I am assuming the chessboard is fixed on the (x, y) plane at z=0, such that the object points are the same for each calibration image.  Thus, `objp` is just a replicated array of coordinates, and `objpoints` will be appended with a copy of it every time I successfully detect all chessboard corners in a test image.  `imgpoints` will be appended with the (x, y) pixel position of each of the corners in the image plane with each successful chessboard detection.  
+I start by preparing object points `objpoints`, which will be the (x, y, z) coordinates of the chessboard corners in the world. Here I am assuming the chessboard is fixed on the (x, y) plane at z=0, such that the object points are the same for each calibration image.  Thus, `objp` is just a replicated array of coordinates, and `objpoints` will be appended with a copy of it every time I successfully detect all chessboard corners in a test image.  `imgpoints` will be appended with the (x, y) pixel position of each of the corners in the image plane with each successful chessboard detection.  
+One image detected with corners is shown below.
+
+![alt text][image0]
 
 I then used the output `objpoints` and `imgpoints` to compute the camera calibration and distortion coefficients using the `cv2.calibrateCamera()` function.  I applied this distortion correction to the test image using the `cv2.undistort()` function and obtained this result: 
 
 ![alt text][image1]
+
+I also tried `cornerSubPix()` to improve the accuracy of the corner, but it turned out for every image, there is no difference between `corners` and `corners2`
+```
+for idx, filename in enumerate(calImages):   
+    image = mpimg.imread( filename)
+    imagename = filename.split('\\')[-1]
+    gray = cv2.cvtColor(image,cv2.COLOR_RGB2GRAY)
+    ret, corners = cv2.findChessboardCorners(gray,(nx,ny),None)
+    if ret == True:
+        image_corners = cv2.drawChessboardCorners(image, (nx,ny), corners, ret)
+        #plt.imshow(image_corners)
+        cv2.imwrite('./camera_cal/FoundCorners_'+str(idx)+'_'+imagename,image_corners)
+        # save one resulted image to output        
+        #misc.imsave('output_images/' + 'image_withDetectedCorners.jpg', image_corners)
+        # 'cornerSubPix' is supposed to refine the corner locations, but I see no difference in corners and corners2 for each image
+        #corners2=cv2.cornerSubPix(gray,corners, (11,11), (-1,-1), criteria)
+        #image_corners = cv2.drawChessboardCorners(image, (nx,ny), corners2, ret)
+        imgpoints.append(corners)
+        objpoints.append(objp)
+```
 
 ### Pipeline (single images)
 
