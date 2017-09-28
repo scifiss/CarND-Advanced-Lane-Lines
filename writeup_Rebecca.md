@@ -20,8 +20,9 @@ The goals / steps of this project are the following:
 [image4]: ./output_images/Undistorted_straight_lines1_marked.jpg "Work out src points"
 [image5]: ./output_images/Unwarped_images.jpg "Unwarp Example"
 [image6]: ./output_images/warped_straight_line1.jpg "Unwarp the straight line"
-[image7]: ./output_images/color_fit_lines.jpg "Fit Visual"
-[image8]: ./output_images/example_output.jpg "Output"
+[image7]: ./output_images/hist_warped_test1.png "histogram"
+[image8]: ./output_images/findLanesNCurves.jpg.jpg "Fit curve"
+[image9]: ./output_images/findCurvesNVisualize.jpg "Curve visualized"
 [video1]: ./project_video.mp4 "Video"
 
 ## [Rubric](https://review.udacity.com/#!/rubrics/571/view) Points
@@ -72,31 +73,29 @@ undist = cv2.undistort(img, mtx, dist, None, mtx)
 
 #### 1. Provide an example of a distortion-corrected image.
 Here are two examples of undistortion for the following steps.
+
 ![alt text][image2]
 
 #### 2. Describe how (and identify where in your code) you used color transforms, gradients or other methods to create a thresholded binary image.  Provide an example of a binary image result.
 
 Many attempts are made to threshold the undistorted images to be prepared for unwarping. 
-The RBG image is converted to HLS and HSV colorspace. The lightness `L` channel or value `V` channel works fine even when shadows occur, since the lane line is always white/yellow, but it fails when the color of the road is bright with light colors, like test 5. The saturation `S` channel, which means how colorful, works much better with the high saturated lines. 
-The `and` combination of gradients at x and y axis direction works good, which uses `Sobel` kernel on the gray image.
-The direction thresholded image works based on `Sobel` operator, and the range for the radian of lane's angle is between 0.5 and 1. It turns out fails in most cases.
-The magnitude of the gradient at 45 degree direction also does a good job in identifying lane-lines, but it is sensitive to textures on the road.
-Finally I used a combination of S channel, V channel, and gradient thresholds to generate a binary image (thresholding steps at lines 31 through 174 in `another_file.py`).  
+- The RBG image is converted to HLS and HSV colorspace. The lightness `L` channel or value `V` channel works fine even when shadows occur, since the lane line is always white/yellow, but it fails when the color of the road is bright with light colors, like test 5. The saturation `S` channel, which means how colorful, works much better with the high saturated lines. 
+- The union combination of gradients at x and y axis direction works good, which uses `Sobel` kernel on the gray image.
+- The direction thresholded image works based on `Sobel` operator, and the range for the radian of lane's angle is between 0.5 and 1. It turns out fails in most cases.
+- The magnitude of the gradient at 45 degree direction also does a good job in identifying lane-lines, but it is sensitive to textures on the road.
+
+Finally I used a combination of S channel, V channel, and gradient thresholds to generate a binary image (thresholding steps at lines 31 through 174 in `FindingLanesPipeline.py`).  
 Here's an example of my output for this step.  
 ![alt text][image3]
-
 
 #### 3. Describe how (and identify where in your code) you performed a perspective transform and provide an example of a transformed image.
 
 The code for my perspective transform includes a function called `cv2.warpPerspective()`, which appears in lines 157 through 173 in the file `UndistAndPerspTransf.py`.  The `warper()` function takes as inputs an image (`img`), as well as source (`src`) and destination (`dst`) points.  I chose the hardcode the source and destination points in the following manner:
 ![alt text][image4]
 ```python
-src = np.float32(
-    [[570,468],  [714,468], [1106,720], [207,720]])
-dst = np.float32(
-    [[320,1],[920,1],[920,720],[320,720]])
+src = np.float32([[570,468],  [714,468], [1106,720], [207,720]])
+dst = np.float32([[320,1],[920,1],[920,720],[320,720]])
 ```
-
 This resulted in the following source and destination points:
 
 | Source        | Destination   | 
@@ -113,13 +112,28 @@ And the warped counterparts for tilted lane-lines appear parallel.
 
 #### 4. Describe how (and identify where in your code) you identified lane-line pixels and fit their positions with a polynomial?
 
-Then I did some other stuff and fit my lane lines with a 2nd order polynomial kinda like this:
+There are several approaches to map out the lane-lines: using the histogram and using convolution, for example, which both use sliding windows to progress from the bottom to the top of image.
+I used the histogram of the bottom half image per column to initialize the search for the line locations.
 
-![alt text][image5]
+![alt text][image7]
+A number of windows are set to search the lines vertically from the bottom upwards. The windows have same widths and same height. Each window gets its location updated by searching the area above the previous window. The new window's horizontal midpoint is an average of the non zero points within the previous window's margin.
+The number of windows is adjusted for the resolution of the tracking, and the margin of window is adjusted as well. Its result is shown with the following step.
+The curves of each line is fit by a second order polymial from the points identified for each line.
+```
+# Extract left and right line pixel positions
+leftx = nonzerox[left_lane_inds]
+lefty = nonzeroy[left_lane_inds] 
+rightx = nonzerox[right_lane_inds]
+righty = nonzeroy[right_lane_inds] 
+# Fit a second order polynomial to each
+left_fit = np.polyfit(lefty, leftx, 2)
+right_fit = np.polyfit(righty, rightx, 2)
+```
+![alt text][image8] ![alt text][image9]
 
 #### 5. Describe how (and identify where in your code) you calculated the radius of curvature of the lane and the position of the vehicle with respect to center.
 
-I did this in lines # through # in my code in `my_other_file.py`
+
 
 #### 6. Provide an example image of your result plotted back down onto the road such that the lane area is identified clearly.
 
