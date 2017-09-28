@@ -23,6 +23,7 @@ The goals / steps of this project are the following:
 [image7]: ./output_images/hist_warped_test1.png "histogram"
 [image8]: ./output_images/findLanesNCurves.jpg "Fit curve"
 [image9]: ./output_images/findCurvesNVisualize.jpg "Curve visualized"
+[image10]: ./output_images/LaneVisualized.jpg "Lane visualized"
 [video1]: ./project_video.mp4 "Video"
 
 ## [Rubric](https://review.udacity.com/#!/rubrics/571/view) Points
@@ -86,13 +87,13 @@ Many attempts are made to threshold the undistorted images to be prepared for un
 
 Finally I used a combination of S channel, V channel, and gradient thresholds to generate a binary image (thresholding steps at lines 31 through 174 in `FindingLanesPipeline.py`).  
 Here's an example of my output for this step on 'test2' and 'test5' images.  
-1st row: HLS L channel thresholded result
-2nd row: HLS S channel thresholded result
-3rd row: thresholded on direction of gradient
-4th row: thresholded on magnitude of gradient
-5th row: thresholded on x-direction of gradient
-6th row: thresholded on y-direction of gradient
-7th row: the result combined with HLS S channel, HSV V channel, gradient on x and y direction.
+* 1st row: HLS L channel thresholded result
+* 2nd row: HLS S channel thresholded result
+* 3rd row: thresholded on direction of gradient
+* 4th row: thresholded on magnitude of gradient
+* 5th row: thresholded on x-direction of gradient
+* 6th row: thresholded on y-direction of gradient
+* 7th row: the result combined with HLS S channel, HSV V channel, gradient on x and y direction.
 ![alt text][image3]
 
 #### 3. Describe how (and identify where in your code) you performed a perspective transform and provide an example of a transformed image.
@@ -125,7 +126,7 @@ I used the histogram of the bottom half image per column to initialize the searc
 ![alt text][image7]
 A number of windows are set to search the lines vertically from the bottom upwards. The windows have same widths and same height. Each window gets its location updated by searching the area above the previous window. The new window's horizontal midpoint is an average of the non zero points within the previous window's margin.
 The number of windows is adjusted for the resolution of the tracking, and the margin of window is adjusted as well. Its result is shown with the following step.
-The curves of each line is fit by a second order polymial from the points identified for each line.
+The curves of each line is fit by a second order polynomial from the points identified for each line: f(y) = Ay^2^+By+C
 ```
 # Extract left and right line pixel positions
 leftx = nonzerox[left_lane_inds]
@@ -138,16 +139,55 @@ right_fit = np.polyfit(righty, rightx, 2)
 ```
 ![alt text][image8] 
 ![alt text][image9]
+For test2 image: 
+The fitted curve for left line: Y~left~= 0.0001335*y^2^ - 0.1906*y + 307.44
+The fitted curve for right line: Y~right~= 0.0003379*y^2^ - 0.3054*y + 891.73
 
 #### 5. Describe how (and identify where in your code) you calculated the radius of curvature of the lane and the position of the vehicle with respect to center.
 
-
+The radius of curvature at point x is: R~curve~ = ((1+(2Ay+B)^2^)^1.5^/|2A|
+With calculated A,B,C from the previous step, the curvature is implemented as (line 171-199 in findingLanesHist.py):
+```
+y_eval = np.max(ploty)
+left_curverad = ((1 + (2*left_fit[0]*y_eval + left_fit[1])**2)**1.5) / np.absolute(2*left_fit[0])
+right_curverad = ((1 + (2*right_fit[0]*y_eval + right_fit[1])**2)**1.5) / np.absolute(2*right_fit[0])
+print(left_curverad, right_curverad)
+```
+To get the curvature in the real world instead of the image, an estimation of distance ratio from image to the world is used:
+```
+ym_per_pix = 30/720 # meters per pixel in y dimension
+xm_per_pix = 3.7/700 # meters per pixel in x dimension
+```
+The polynomial fitting is computed again with data in the world space, and so are the curvatures. 
+The curvature for test2 is: left 1230.46982432m and right: 1486.342089683 m
+Now compute the distance between the middle of the vehicle and the center of the lane. The camera is installed in the middle of the car, so the car's position is in the center (bottom) of the image. The car is at the bottom of the image, so image height is applied to the fitting polynomials to get the two lane line positions in the image. The lane center is in the middle of the two lines. The distance in the image is transformed into the world space by again `xm_per_pix` = 3.7/700.
+The distance of the car to the lane center is 0.084 m in test2.
 
 #### 6. Provide an example image of your result plotted back down onto the road such that the lane area is identified clearly.
 
-I implemented this step in lines # through # in my code in `yet_another_file.py` in the function `map_lane()`.  Here is an example of my result on a test image:
+I implemented this step in lines 178 through 196 in my code in `findingLanesHist.py` in the function `map_lane()`.  Here is an example of my result on a test image:
+```
+# Create an image to draw the lines on
+warp_zero = np.zeros_like(binary_warped).astype(np.uint8)
+color_warp = np.dstack((warp_zero, warp_zero, warp_zero))
 
-![alt text][image6]
+# Recast the x and y points into usable format for cv2.fillPoly()
+pts_left = np.array([np.transpose(np.vstack([left_fitx, ploty]))])
+pts_right = np.array([np.flipud(np.transpose(np.vstack([right_fitx, ploty])))])
+pts = np.hstack((pts_left, pts_right))
+
+# Draw the lane onto the warped blank image
+cv2.fillPoly(color_warp, np.int_([pts]), (0,255, 0))
+undist = cv2.imread('./test_images/undistorted_test2.jpg')
+undist = cv2.cvtColor(undist, cv2.COLOR_BGR2RGB)
+height, width, chann = undist.shape
+# Warp the blank back to original image space using inverse perspective matrix (Minv)
+newwarp = cv2.warpPerspective(color_warp, Minv, (width, height)) 
+# Combine the result with the original image
+result = cv2.addWeighted(undist, 1, newwarp, 0.3, 0)
+plt.imshow(result)
+```
+![alt text][image10]
 
 ---
 
