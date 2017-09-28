@@ -21,7 +21,7 @@ The goals / steps of this project are the following:
 [image5]: ./output_images/Unwarped_images.jpg "Unwarp Example"
 [image6]: ./output_images/warped_straight_line1.jpg "Unwarp the straight line"
 [image7]: ./output_images/hist_warped_test1.png "histogram"
-[image8]: ./output_images/findLanesNCurves.jpg.jpg "Fit curve"
+[image8]: ./output_images/findLanesNCurves.jpg "Fit curve"
 [image9]: ./output_images/findCurvesNVisualize.jpg "Curve visualized"
 [video1]: ./project_video.mp4 "Video"
 
@@ -72,7 +72,7 @@ undist = cv2.undistort(img, mtx, dist, None, mtx)
 ### Pipeline (single images)
 
 #### 1. Provide an example of a distortion-corrected image.
-Here are two examples of undistortion for the following steps.
+Here are examples of undistorted 'test2' and 'test5' images for the following steps.
 
 ![alt text][image2]
 
@@ -85,7 +85,14 @@ Many attempts are made to threshold the undistorted images to be prepared for un
 - The magnitude of the gradient at 45 degree direction also does a good job in identifying lane-lines, but it is sensitive to textures on the road.
 
 Finally I used a combination of S channel, V channel, and gradient thresholds to generate a binary image (thresholding steps at lines 31 through 174 in `FindingLanesPipeline.py`).  
-Here's an example of my output for this step.  
+Here's an example of my output for this step on 'test2' and 'test5' images.  
+1st row: HLS L channel thresholded result
+2nd row: HLS S channel thresholded result
+3rd row: thresholded on direction of gradient
+4th row: thresholded on magnitude of gradient
+5th row: thresholded on x-direction of gradient
+6th row: thresholded on y-direction of gradient
+7th row: the result combined with HLS S channel, HSV V channel, gradient on x and y direction.
 ![alt text][image3]
 
 #### 3. Describe how (and identify where in your code) you performed a perspective transform and provide an example of a transformed image.
