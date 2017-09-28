@@ -17,10 +17,11 @@ The goals / steps of this project are the following:
 [image1]: ./output_images/Undist_calibration3.jpg "Undistorted"
 [image2]: ./output_images/two_test_images.jpg "Test images undistorted"
 [image3]: ./output_images/Preprocessing.jpg "Binary Example"
-[image4]: ./output_images/Unwarped_images.jpg "Unwarp Example"
-[image5]: ./output_images/warped_straight_line1.jpg "Unwarp the straight line"
-[image6]: ./output_images/color_fit_lines.jpg "Fit Visual"
-[image7]: ./output_images/example_output.jpg "Output"
+[image4]: ./output_images/Undistorted_straight_lines1_marked.jpg "Work out src points"
+[image5]: ./output_images/Unwarped_images.jpg "Unwarp Example"
+[image6]: ./output_images/warped_straight_line1.jpg "Unwarp the straight line"
+[image7]: ./output_images/color_fit_lines.jpg "Fit Visual"
+[image8]: ./output_images/example_output.jpg "Output"
 [video1]: ./project_video.mp4 "Video"
 
 ## [Rubric](https://review.udacity.com/#!/rubrics/571/view) Points
@@ -61,62 +62,53 @@ One image detected with corners is shown below.
 
 ![alt text][image0]
 
-I then used the output `objpoints` and `imgpoints` to compute the camera calibration and distortion coefficients using the `cv2.calibrateCamera()` function.  I applied this distortion correction to the test image using the `cv2.undistort()` function and obtained this result: 
-
+I then used the output `objpoints` and `imgpoints` to compute the camera calibration and distortion coefficients using the `cv2.calibrateCamera()` function.  I applied this distortion correction to the test image using the `cv2.undistort()` function with camera matrix `mtx` and distortion coefficients `dist` and obtained this result: 
+```
+undist = cv2.undistort(img, mtx, dist, None, mtx)
+```
 ![alt text][image1]
-
 
 ### Pipeline (single images)
 
 #### 1. Provide an example of a distortion-corrected image.
-
-The distortion correction is applied with camera matrix `mtx` and distortion coefficients `dist` from the calibration step`:
-```
-undist = cv2.undistort(img, mtx, dist, None, mtx)
-```
-Below is one result.
+Here are two examples of undistortion for the following steps.
 ![alt text][image2]
 
 #### 2. Describe how (and identify where in your code) you used color transforms, gradients or other methods to create a thresholded binary image.  Provide an example of a binary image result.
 
-I used a combination of color and gradient thresholds to generate a binary image (thresholding steps at lines 31 through 174 in `another_file.py`).  
 Many attempts are made to threshold the undistorted images to be prepared for unwarping. 
-
+The RBG image is converted to HLS and HSV colorspace. The lightness `L` channel or value `V` channel works fine even when shadows occur, since the lane line is always white/yellow, but it fails when the color of the road is bright with light colors, like test 5. The saturation `S` channel, which means how colorful, works much better with the high saturated lines. 
+The `and` combination of gradients at x and y axis direction works good, which uses `Sobel` kernel on the gray image.
+The direction thresholded image works based on `Sobel` operator, and the range for the radian of lane's angle is between 0.5 and 1. It turns out fails in most cases.
+The magnitude of the gradient at 45 degree direction also does a good job in identifying lane-lines, but it is sensitive to textures on the road.
+Finally I used a combination of S channel, V channel, and gradient thresholds to generate a binary image (thresholding steps at lines 31 through 174 in `another_file.py`).  
 Here's an example of my output for this step.  
 ![alt text][image3]
-And here is a result of unwarped image for the straight line test image.
 
 
 #### 3. Describe how (and identify where in your code) you performed a perspective transform and provide an example of a transformed image.
 
-The code for my perspective transform includes a function called `warper()`, which appears in lines 1 through 8 in the file `example.py` (output_images/examples/example.py) (or, for example, in the 3rd code cell of the IPython notebook).  The `warper()` function takes as inputs an image (`img`), as well as source (`src`) and destination (`dst`) points.  I chose the hardcode the source and destination points in the following manner:
-
+The code for my perspective transform includes a function called `cv2.warpPerspective()`, which appears in lines 157 through 173 in the file `UndistAndPerspTransf.py`.  The `warper()` function takes as inputs an image (`img`), as well as source (`src`) and destination (`dst`) points.  I chose the hardcode the source and destination points in the following manner:
+![alt text][image4]
 ```python
 src = np.float32(
-    [[(img_size[0] / 2) - 55, img_size[1] / 2 + 100],
-    [((img_size[0] / 6) - 10), img_size[1]],
-    [(img_size[0] * 5 / 6) + 60, img_size[1]],
-    [(img_size[0] / 2 + 55), img_size[1] / 2 + 100]])
+    [[570,468],  [714,468], [1106,720], [207,720]])
 dst = np.float32(
-    [[(img_size[0] / 4), 0],
-    [(img_size[0] / 4), img_size[1]],
-    [(img_size[0] * 3 / 4), img_size[1]],
-    [(img_size[0] * 3 / 4), 0]])
+    [[320,1],[920,1],[920,720],[320,720]])
 ```
 
 This resulted in the following source and destination points:
 
 | Source        | Destination   | 
 |:-------------:|:-------------:| 
-| 585, 460      | 320, 0        | 
-| 203, 720      | 320, 720      |
-| 1127, 720     | 960, 720      |
-| 695, 460      | 960, 0        |
+| 570, 468      | 320, 1        | 
+| 714,468       | 920,1         |
+| 1106,720      | 960, 720      |
+| 207,720       | 320,720       |
 
-I verified that my perspective transform was working as expected by drawing the `src` and `dst` points onto a test image and its warped counterpart to verify that the lines appear parallel in the warped image.
-
-![alt text][image4]
-And here is a result of unwarped image for one straight line example.
+I verified that my perspective transform was working as expected by drawing the `src` and `dst` points onto a straight line test image, whose warped image has straight and parallel lines. 
+![alt text][image6]
+And the warped counterparts for tilted lane-lines appear parallel.
 ![alt text][image5]
 
 #### 4. Describe how (and identify where in your code) you identified lane-line pixels and fit their positions with a polynomial?
