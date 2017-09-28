@@ -129,7 +129,8 @@ righty = nonzeroy[right_lane_inds]
 left_fit = np.polyfit(lefty, leftx, 2)
 right_fit = np.polyfit(righty, rightx, 2)
 ```
-![alt text][image8] ![alt text][image9]
+![alt text][image8] 
+![alt text][image9]
 
 #### 5. Describe how (and identify where in your code) you calculated the radius of curvature of the lane and the position of the vehicle with respect to center.
 
