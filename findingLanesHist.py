@@ -9,13 +9,16 @@ import numpy as np
 import cv2
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
-import glob
+
+import pickle
+
+Warp_data=pickle.load(open('./Warp_pickle.p','rb'))
+M = Warp_data['M']
+Minv = Warp_data['Minv']  
+
 # Assuming you have created a warped binary image called "binary_warped"
-# Take a histogram of the bottom half of the image
-testImages = glob.glob('./test_images/warped_test*.jpg')
-
-
 binary_warped = cv2.imread('./test_images/warped_test2.jpg',0)
+# Take a histogram of the bottom half of the image
 height, width = binary_warped.shape
 # the original 0-1 image is read as 0-255
 if np.max(binary_warped==255):
@@ -189,7 +192,7 @@ left_curverad = ((1 + (2*left_fit_cr[0]*y_eval*ym_per_pix + left_fit_cr[1])**2)*
 right_curverad = ((1 + (2*right_fit_cr[0]*y_eval*ym_per_pix + right_fit_cr[1])**2)**1.5) / np.absolute(2*right_fit_cr[0])
 # Now our radius of curvature is in meters
 print(left_curverad, 'm', right_curverad, 'm')
-
+avg_curverad = (left_curverad+right_curverad)/2
 
 carPos = width/2
 left_x = left_fit[0]*height**2 + left_fit[1]*height + left_fit[2]
@@ -197,6 +200,7 @@ right_x = right_fit[0]*height**2 + right_fit[1]*height + right_fit[2]
 laneCenter = (left_x + right_x) /2
 DistanceInImage = np.abs(carPos-laneCenter)
 DistanceInLife = xm_per_pix*DistanceInImage
+LeftOfLaneCenter = carPos<laneCenter
 #----------------------------------------
 # Visualize the lane
 #----------------------------------------
@@ -218,5 +222,14 @@ undist = cv2.cvtColor(undist, cv2.COLOR_BGR2RGB)
 newwarp = cv2.warpPerspective(color_warp, Minv, (width, height)) 
 # Combine the result with the original image
 result = cv2.addWeighted(undist, 1, newwarp, 0.3, 0)
+
+info = 'Radius of Curvature = '+ '{:05.3f}'.format(avg_curverad)+'m'
+cv2.putText(result, info, (50,50), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (255,255,0), 3, 8)
+pos = 'right'
+if LeftOfLaneCenter:
+    pos = 'left'
+info = 'Vehicle is '+'{:04.2f}'.format(DistanceInLife)+' '+pos+' of center'
+cv2.putText(result, info, (50,100), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (255,255,0), 3, 8)
+
 plt.imshow(result)
 plt.savefig('output_images/LaneVisualized.jpg', bbox_inches='tight')

@@ -24,8 +24,8 @@ The goals / steps of this project are the following:
 [image8]: ./output_images/findLanesNCurves.jpg "Fit curve"
 [image9]: ./output_images/findCurvesNVisualize.jpg "Curve visualized"
 [image10]: ./output_images/LaneVisualized.jpg "Lane visualized"
-[video1]: ./project_video.mp4 "Video"
-
+[video1]: ./project_video_output.mp4 "Project Video"
+[image11]: ./output_images/challenge_video_image.png "challenge video"
 ## [Rubric](https://review.udacity.com/#!/rubrics/571/view) Points
 
 ### Here I will consider the rubric points individually and describe how I addressed each point in my implementation.  
@@ -42,7 +42,7 @@ You're reading it!
 
 #### 1. Briefly state how you computed the camera matrix and distortion coefficients. Provide an example of a distortion corrected calibration image.
 
-The code for this step is contained in the file `CameraCalibration.py` in lines 22 through 59.  
+The code for this step is contained in the file `CameraCalibration.py` in lines 22 through 56.  
 
 I start by preparing object points `objpoints`, which will be the (x, y, z) coordinates of the chessboard corners in the world. Here I am assuming the chessboard is fixed on the (x, y) plane at z=0, such that the object points are the same for each calibration image.  Thus, `objp` is just a replicated array of coordinates, and `objpoints` will be appended with a copy of it every time I successfully detect all chessboard corners in a test image.  `imgpoints` will be appended with the (x, y) pixel position of each of the corners in the image plane with each successful chessboard detection.  
 I also tried `cornerSubPix()` to improve the accuracy of the corner, but it turned out for every image, there is no difference between `corners` and `corners2`
@@ -85,7 +85,7 @@ Many attempts are made to threshold the undistorted images to be prepared for un
 - The direction thresholded image works based on `Sobel` operator, and the range for the radian of lane's angle is between 0.5 and 1. It turns out fails in most cases.
 - The magnitude of the gradient at 45 degree direction also does a good job in identifying lane-lines, but it is sensitive to textures on the road.
 
-Finally I used a combination of S channel, V channel, and gradient thresholds to generate a binary image (thresholding steps at lines 31 through 174 in `FindingLanesPipeline.py`).  
+Finally I used a combination of S channel, V channel, and gradient thresholds to generate a binary image (thresholding steps at lines 29 through 149 in `UndistAndPerspTransf.py`).  
 Here's an example of my output for this step on 'test2' and 'test5' images.  
 * 1st row: HLS L channel thresholded result
 * 2nd row: HLS S channel thresholded result
@@ -98,7 +98,7 @@ Here's an example of my output for this step on 'test2' and 'test5' images.
 
 #### 3. Describe how (and identify where in your code) you performed a perspective transform and provide an example of a transformed image.
 
-The code for my perspective transform includes a function called `cv2.warpPerspective()`, which appears in lines 157 through 173 in the file `UndistAndPerspTransf.py`.  The `warper()` function takes as inputs an image (`img`), as well as source (`src`) and destination (`dst`) points.  I chose the hardcode the source and destination points in the following manner:
+The code for my perspective transform includes a function called `cv2.warpPerspective()`, which appears in lines 151 through 172 in the file `UndistAndPerspTransf.py`.  The `warper()` function takes as inputs an image (`img`), as well as source (`src`) and destination (`dst`) points.  I chose the hardcode the source and destination points in the following manner:
 ![alt text][image4]
 ```python
 src = np.float32([[570,468],  [714,468], [1106,720], [207,720]])
@@ -166,7 +166,7 @@ Now compute the distance between the middle of the vehicle and the center of the
 
 #### 6. Provide an example image of your result plotted back down onto the road such that the lane area is identified clearly.
 
-I implemented this step in lines 178 through 196 in my code in `findingLanesHist.py` in the function `map_lane()`.  Here is an example of my result on a test image:
+I implemented this step in lines 208 through 234 in my code in `findingLanesHist.py` in the function `map_lane()`.  Here is an example of my result on a test image:
 ```
 # Create an image to draw the lines on
 warp_zero = np.zeros_like(binary_warped).astype(np.uint8)
@@ -193,15 +193,20 @@ plt.imshow(result)
 ---
 
 ### Pipeline (video)
+Now in order to generate images of each frame in a video, I put all scripts as functions. Camera calibration data and perspective transform parameters are loaded from file by pickle.
+* A Line class is used to remember a few numbers of previous fit, and current best fit of both lines. An update() function is added to the class, to update the best fit.
 
 #### 1. Provide a link to your final video output.  Your pipeline should perform reasonably well on the entire project video (wobbly lines are ok but no catastrophic failures that would cause the car to drive off the road!).
 
-Here's a [link to my video result](./project_video.mp4)
+Here's a [link to my video result](./project_video_output.mp4)
 
 ---
 
 ### Discussion
 
 #### 1. Briefly discuss any problems / issues you faced in your implementation of this project.  Where will your pipeline likely fail?  What could you do to make it more robust?
+Although the current combination of thresholding on gradient x, y, and S and V channel work stably for project video, it fails at Challenge video when the car is under the bridge. Other color space / channel should be examined.
 
-Here I'll talk about the approach I took, what techniques I used, what worked and why, where the pipeline might fail and how I might improve it if I were going to pursue this project further.  
+![alt text][image11]
+
+I spent a lot of time in locating the source points for perspective transformation. Later I realized I could use x and y location instead of percentage of the image. But this does not seem very generalizable.
