@@ -33,7 +33,7 @@ Minv = Warp_data['Minv']
 #----------------------------------------
 ## perspective transform
 #----------------------------------------
- 
+
 # UndistAndPerspTransf.py
 def gen_mask(img, threshold):
     themask = np.zeros_like(img)
@@ -97,7 +97,7 @@ class Line():
         #polynomial coefficients averaged over the last n iterations
         self.best_fit = None  
         #polynomial coefficients for the most recent fit
-        self.current_fit = [np.array([False])]  
+        self.current_fit = [] # [np.array([False])]  
         #radius of curvature of the line in some units
         self.radius_of_curvature = None 
         #distance in meters of vehicle center from the line
@@ -261,8 +261,9 @@ def CalCurvatureAndDistance(left_fit, right_fit,ploty,left_fitx,right_fitx, widt
     LeftOfLaneCenter = carPos<laneCenter
     return avg_curverad, DistanceInLife, LeftOfLaneCenter
 
-def VisualizeLane(undist,ploty,left_fitx,right_fitx,width, height,avg_curverad,DistanceInLife,LeftOfLaneCenter):
+def VisualizeLane(undist,ploty,left_fitx,right_fitx,avg_curverad,DistanceInLife,LeftOfLaneCenter):
     result = np.copy(undist)
+    height, width, chann = undist.shape
     warp_zero = np.zeros((height, width)).astype(np.uint8)
     color_warp = np.dstack((warp_zero, warp_zero, warp_zero))
     
@@ -319,8 +320,10 @@ def process_image(image):
         left_fitx = left_fit[0]*ploty**2 + left_fit[1]*ploty + left_fit[2]
         right_fitx = right_fit[0]*ploty**2 + right_fit[1]*ploty + right_fit[2]
         avg_curverad, DistanceInLife, LeftOfLaneCenter = CalCurvatureAndDistance(left_fit, right_fit,ploty,left_fitx,right_fitx, width, height)
-        result = VisualizeLane(undist,ploty,left_fitx,right_fitx,width, height,avg_curverad,DistanceInLife,LeftOfLaneCenter)
-        
+        result = VisualizeLane(undist,ploty,left_fitx,right_fitx,avg_curverad,DistanceInLife,LeftOfLaneCenter)
+        if DistanceInLife>0.5:
+            mpimg.imsave('./issue_images/image'+'{:04.2f}'.format(avg_curverad)+'_{:04.2f}'.format(DistanceInLife)+'.jpg',image)  
+            mpimg.imsave('./issue_images/result'+'{:04.2f}'.format(avg_curverad)+'_{:04.2f}'.format(DistanceInLife)+'.jpg',result)  
         
     else:
         result = np.copy(image)
@@ -340,10 +343,10 @@ video_input = VideoFileClip('project_video.mp4')
 video_clip = video_input.fl_image(process_image)
 video_clip.write_videofile('project_video_output.mp4',audio=False)
 
-video_input = VideoFileClip('challenge_video.mp4')
-video_clip = video_input.fl_image(process_image)
-video_clip.write_videofile('challenge_video_output.mp4',audio=False)
-
-video_input = VideoFileClip('harder_challenge_video.mp4')
-video_clip = video_input.fl_image(process_image)
-video_clip.write_videofile('harder_challenge_video_output.mp4',audio=False)
+#video_input = VideoFileClip('challenge_video.mp4')
+#video_clip = video_input.fl_image(process_image)
+#video_clip.write_videofile('challenge_video_output.mp4',audio=False)
+#
+#video_input = VideoFileClip('harder_challenge_video.mp4')
+#video_clip = video_input.fl_image(process_image)
+#video_clip.write_videofile('harder_challenge_video_output.mp4',audio=False)

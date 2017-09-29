@@ -198,15 +198,17 @@ Now in order to generate images of each frame in a video, I put all scripts as f
 
 #### 1. Provide a link to your final video output.  Your pipeline should perform reasonably well on the entire project video (wobbly lines are ok but no catastrophic failures that would cause the car to drive off the road!).
 
-Here's a [link to my video result](./project_video_output.mp4)
+Here's a [link to my video result](https://youtu.be/hVnU8-NlMuQ)
 
 ---
 
 ### Discussion
 
 #### 1. Briefly discuss any problems / issues you faced in your implementation of this project.  Where will your pipeline likely fail?  What could you do to make it more robust?
-Although the current combination of thresholding on gradient x, y, and S and V channel work stably for project video, it fails at Challenge video when the car is under the bridge. Other color space / channel should be examined.
+* My video produced exploded lane lines at some point. I find that it is not due to preprocessing issue, but due to my definition of Line() class. 
+
+* Although the current combination of thresholding on gradient x, y, and S and V channel work stably for project video, it fails at Challenge video when the car is under the bridge. Other color space / channel should be examined.
 
 ![alt text][image11]
 
-I spent a lot of time in locating the source points for perspective transformation. Later I realized I could use x and y location instead of percentage of the image. But this does not seem very generalizable.
+* I spent a lot of time in locating the source points for perspective transformation. Later I realized I could use x and y location instead of percentage of the image. But this does not seem very generalizable.
