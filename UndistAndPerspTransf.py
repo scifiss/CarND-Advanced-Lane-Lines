@@ -49,6 +49,14 @@ def dir_threshold(img, sobel_kernel=3, thresh=(0, np.pi/2)):
 
     return binary_output
 
+def hls_threshold(img, hthresh=(0,180), lthresh=(0,255), sthresh=(0,255)):
+    hls = cv2.cvtColor(img, cv2.COLOR_RGB2HLS)
+    s_binary = gen_mask(hls[:,:,2], sthresh)
+    h_binary = gen_mask(hls[:,:,0], hthresh)
+    l_binary = gen_mask(hls[:,:,1], lthresh)
+    output = np.zeros_like(s_binary)
+    output[(s_binary==1) & (l_binary==1) & (h_binary==1)] = 1    
+    return output
 
 def color_threshold(img, sthresh=(0,255), vthresh=(0,255)):
     hls = cv2.cvtColor(img, cv2.COLOR_RGB2HLS)
@@ -114,24 +122,32 @@ for idx, filename in enumerate(testImages):
 #----------------------------------------        
     # generate masked images that highlight the lanes
     preprocessed = np.zeros_like(img[:,:,0])
+    
+    hlsthreshed = hls_threshold(undist, hthresh=(0,180), lthresh=(0,255), sthresh=(150,255))
+    mpimg.imsave('./test_images/hls_s_'+imagename,hlsthreshed,cmap='gray')  
+    hlsthreshed = hls_threshold(undist, hthresh=(0,80), lthresh=(0,255), sthresh=(0,255))
+    mpimg.imsave('./test_images/hls_h_'+imagename,hlsthreshed,cmap='gray')  
+    hlsthreshed = hls_threshold(undist, hthresh=(0,180), lthresh=(100,255), sthresh=(0,255))
+    mpimg.imsave('./test_images/hls_l_'+imagename,hlsthreshed,cmap='gray')  
+    
     # gradient on x and y direction
-    gradx = abs_sobel_thresh(img, orient='x', sobel_kernel=3, thresh=(12, 255))    
+    gradx = abs_sobel_thresh(undist, orient='x', sobel_kernel=3, thresh=(12, 255))    
     mpimg.imsave('./test_images/gradx_'+imagename,gradx,cmap='gray')  
-    grady = abs_sobel_thresh(img, orient='y', sobel_kernel=3, thresh=(25, 255))   
+    grady = abs_sobel_thresh(undist, orient='y', sobel_kernel=3, thresh=(25, 255))   
     mpimg.imsave('./test_images/grady_'+imagename,grady,cmap='gray')  
     # magnitude of the gradient at 45degree
-    mag_binary = mag_thresh(img, sobel_kernel=3, thresh=(30, 100))
+    mag_binary = mag_thresh(undist, sobel_kernel=3, thresh=(30, 100))
     mpimg.imsave('./test_images/mag_'+imagename,mag_binary,cmap='gray')  
     # direction of the gradient
-    dir_binary = dir_threshold(img, sobel_kernel = 15, thresh=(0.5,1.0))
+    dir_binary = dir_threshold(undist, sobel_kernel = 15, thresh=(0.5,1.0))
     mpimg.imsave('./test_images/dir_'+imagename,dir_binary,cmap='gray')  
     # color threshold on saturation and value channel
-    col_binary = color_threshold(img, sthresh=(100,255),vthresh=(50,255))
+    col_binary = color_threshold(undist, sthresh=(100,255),vthresh=(50,255))
     mpimg.imsave('./test_images/col_'+imagename,col_binary,cmap='gray')
     
     # combined thresholding
     masked = ((gradx==1) & (grady==1)) | (col_binary==1)
-    preprocessed[masked] = 255
+    preprocessed[masked] = 1
     mpimg.imsave('./test_images/preprocessed_'+imagename,preprocessed,cmap='gray')  
     
 #    btm_width =  0.7063  #0.57  #0.76
@@ -153,52 +169,96 @@ for idx, filename in enumerate(testImages):
 ## perspective transform
 #----------------------------------------
     M = cv2.getPerspectiveTransform(src, dst)
-    #Minv = cv2.getPerspectiveTransform(dst, src)
-    warped = cv2.warpPerspective(preprocessed, M, ( width, height), flags=cv2.INTER_LINEAR)
-    mpimg.imsave('./test_images/warped_'+imagename,warped,cmap='gray')  
+    Minv = cv2.getPerspectiveTransform(dst, src)
+    unwarped = cv2.warpPerspective(preprocessed, M, ( width, height), flags=cv2.INTER_LINEAR)
+    mpimg.imsave('./test_images/warped_'+imagename,unwarped,cmap='gray')  
 
+Warp_pickle = {}
+Warp_pickle['M'] = M
+Warp_pickle['Minv']= Minv
+pickle.dump( Warp_pickle, open('./Warp_pickle.p','wb'))
 # show the result
-img = mpimg.imread('./test_images/straight_lines1.jpg')
-warped0 = cv2.warpPerspective(image, M, ( width, height), flags=cv2.INTER_LINEAR)
+#warped0 = cv2.warpPerspective(image, M, ( width, height), flags=cv2.INTER_LINEAR)
+#f, (ax1, ax2) = plt.subplots(1, 2, figsize=(24, 9))
+#f.tight_layout()
+#ax1.imshow(img)
+#ax1.set_title('Original Image', fontsize=50)
+#ax2.imshow(warped0)
+#ax2.set_title('Undistorted and Warped Image', fontsize=50)
+#plt.subplots_adjust(left=0., right=1, top=0.9, bottom=0.)
+#plt.savefig('output_images/warped_straight_line1.jpg')
+#
+#perspective_M = M
+fig, axs = plt.subplots(2,2,)
+fig.subplots_adjust(hspace=0.01,wspace=0.01)
+i=0
+axs[i,0].imshow(mpimg.imread( './test_images/test2.jpg') )
+axs[i,0].set_title('test2')
+axs[i,0].axis('off')
+axs[i,1].imshow(mpimg.imread( './test_images/test5.jpg') )
+axs[i,1].axis('off')
+axs[i,1].set_title('test5')
+i=i+1
+axs[i,0].imshow(mpimg.imread( './test_images/Undistorted_test2.jpg') )
+axs[i,0].set_title('undistorted')
+axs[i,0].axis('off')
+axs[i,1].imshow(mpimg.imread( './test_images/Undistorted_test5.jpg') )
+axs[i,1].set_title('undistorted')
+axs[i,1].axis('off')
+plt.savefig('output_images/two_test_images.jpg', bbox_inches='tight')
+    
+fig, axs = plt.subplots(7,2,figsize=(30,60))
+fig.subplots_adjust(hspace=0.1,wspace=0.001)
+img1 = mpimg.imread( './test_images/Undistorted_test2.jpg') 
+i=0
+
+axs[i,0].imshow(mpimg.imread( './test_images/hls_l_test2.jpg') )
+axs[i,0].set_title('HLS L channel')
+axs[i,1].imshow(mpimg.imread( './test_images/hls_l_test5.jpg') )
+axs[i,1].set_title('HLS L channel')
+i=i+1
+axs[i,0].imshow(mpimg.imread( './test_images/hls_s_test2.jpg') )
+axs[i,0].set_title('HLS S channel')
+axs[i,1].imshow(mpimg.imread( './test_images/hls_s_test5.jpg') )
+axs[i,1].set_title('HLS S channel')
+i=i+1
+axs[i,0].imshow(mpimg.imread( './test_images/dir_test2.jpg') )
+axs[i,0].set_title('Dir channel')
+axs[i,1].imshow(mpimg.imread( './test_images/dir_test5.jpg') )
+axs[i,1].set_title('Dir channel')
+i=i+1
+axs[i,0].imshow(mpimg.imread( './test_images/mag_test2.jpg') )
+axs[i,0].set_title('Mag channel')
+axs[i,1].imshow(mpimg.imread( './test_images/mag_test5.jpg') )
+axs[i,1].set_title('Mag channel')
+
+i=i+1
+axs[i,0].imshow(mpimg.imread( './test_images/gradx_test2.jpg') )
+axs[i,0].set_title('Gradx with Sobel')
+axs[i,1].imshow(mpimg.imread( './test_images/gradx_test5.jpg') )
+axs[i,1].set_title('Gradx with Sobel')
+
+i=i+1
+axs[i,0].imshow(mpimg.imread( './test_images/grady_test2.jpg') )
+axs[i,0].set_title('Grady with Sobel')
+axs[i,1].imshow(mpimg.imread( './test_images/grady_test5.jpg') )
+axs[i,1].set_title('Grady with Sobel')
+
+i=i+1
+axs[i,0].imshow(mpimg.imread( './test_images/preprocessed_test2.jpg') )
+axs[i,0].set_title('Preprocessed')
+axs[i,1].imshow(mpimg.imread( './test_images/preprocessed_test5.jpg') )
+axs[i,1].set_title('Preprocessed')
+plt.savefig('output_images/Preprocessing.jpg', bbox_inches='tight')
+
+
 f, (ax1, ax2) = plt.subplots(1, 2, figsize=(24, 9))
 f.tight_layout()
-ax1.imshow(img)
-ax1.set_title('Original Image', fontsize=50)
-ax2.imshow(warped0)
-ax2.set_title('Undistorted and Warped Image', fontsize=50)
+ax1.imshow(mpimg.imread( './test_images/warped_test2.jpg') )
+ax1.set_title('Unwarped test2', fontsize=50)
+ax2.imshow(mpimg.imread( './test_images/warped_test5.jpg') )
+ax2.set_title('Unwarped test5', fontsize=50)
 plt.subplots_adjust(left=0., right=1, top=0.9, bottom=0.)
-plt.savefig('output_images/warped_straight_line1.jpg')
-
-perspective_M = M
-    
-
-
-    
+plt.savefig('output_images/Unwarped_images.jpg')
 #----------------------------------------
-## detect lane lines
-# Define a class to receive the characteristics of each line detection
-class Line():
-    def __init__(self):
-        # was the line detected in the last iteration?
-        self.detected = False  
-        # x values of the last n fits of the line
-        self.recent_xfitted = [] 
-        #average x values of the fitted line over the last n iterations
-        self.bestx = None     
-        #polynomial coefficients averaged over the last n iterations
-        self.best_fit = None  
-        #polynomial coefficients for the most recent fit
-        self.current_fit = [np.array([False])]  
-        #radius of curvature of the line in some units
-        self.radius_of_curvature = None 
-        #distance in meters of vehicle center from the line
-        self.line_base_pos = None 
-        #difference in fit coefficients between last and new fits
-        self.diffs = np.array([0,0,0], dtype='float') 
-        #x values for detected line pixels
-        self.allx = None  
-        #y values for detected line pixels
-        self.ally = None
 
-
-## determine lane curvature

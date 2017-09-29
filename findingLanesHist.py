@@ -8,17 +8,25 @@ Created on Sun Sep 24 11:50:05 2017
 import numpy as np
 import cv2
 import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
 import glob
 # Assuming you have created a warped binary image called "binary_warped"
 # Take a histogram of the bottom half of the image
 testImages = glob.glob('./test_images/warped_test*.jpg')
 
 
-binary_warped = cv2.imread('./test_images/warped_test6.jpg',0)
-plt.imshow(binary_warped,cmap='gray')
+binary_warped = cv2.imread('./test_images/warped_test2.jpg',0)
+height, width = binary_warped.shape
+# the original 0-1 image is read as 0-255
+if np.max(binary_warped==255):
+    binary_warped = binary_warped//255
+#plt.imshow(binary_warped,cmap='gray')
 histogram = np.sum(binary_warped[binary_warped.shape[0]//2:,:], axis=0)
+#plt.plot(histogram)
 # Create an output image to draw on and  visualize the result
 out_img = np.dstack((binary_warped, binary_warped, binary_warped))*255
+#mpimg.imsave('./test_images/stacked_test1.jpg',out_img)  
+
 # Find the peak of the left and right halves of the histogram
 # These will be the starting point for the left and right lines
 midpoint = np.int(histogram.shape[0]/2)
@@ -26,7 +34,7 @@ leftx_base = np.argmax(histogram[:midpoint])
 rightx_base = np.argmax(histogram[midpoint:]) + midpoint
 
 # Choose the number of sliding windows
-nwindows = 9
+nwindows = 10
 # Set height of windows
 window_height = np.int(binary_warped.shape[0]/nwindows)
 # Identify the x and y positions of all nonzero pixels in the image
@@ -37,9 +45,9 @@ nonzerox = np.array(nonzero[1])
 leftx_current = leftx_base
 rightx_current = rightx_base
 # Set the width of the windows +/- margin
-margin = 100
+margin = 70
 # Set minimum number of pixels found to recenter window
-minpix = 50
+minpix = 30
 # Create empty lists to receive left and right lane pixel indices
 left_lane_inds = []
 right_lane_inds = []
@@ -99,7 +107,7 @@ plt.plot(left_fitx, ploty, color='yellow')
 plt.plot(right_fitx, ploty, color='yellow')
 plt.xlim(0, 1280)
 plt.ylim(720, 0)
-
+plt.savefig('output_images/findLanesNCurves.jpg', bbox_inches='tight')
 
 #---------------------------------------------------
 
@@ -110,14 +118,12 @@ plt.ylim(720, 0)
 nonzero = binary_warped.nonzero()
 nonzeroy = np.array(nonzero[0])
 nonzerox = np.array(nonzero[1])
-margin = 100
-left_lane_inds = ((nonzerox > (left_fit[0]*(nonzeroy**2) + left_fit[1]*nonzeroy + 
-left_fit[2] - margin)) & (nonzerox < (left_fit[0]*(nonzeroy**2) + 
-left_fit[1]*nonzeroy + left_fit[2] + margin))) 
+margin = 70
+left_lane_inds = ((nonzerox > (left_fit[0]*(nonzeroy**2) + left_fit[1]*nonzeroy + left_fit[2] - margin)) 
+                 & (nonzerox < (left_fit[0]*(nonzeroy**2) + left_fit[1]*nonzeroy + left_fit[2] + margin))) 
 
-right_lane_inds = ((nonzerox > (right_fit[0]*(nonzeroy**2) + right_fit[1]*nonzeroy + 
-right_fit[2] - margin)) & (nonzerox < (right_fit[0]*(nonzeroy**2) + 
-right_fit[1]*nonzeroy + right_fit[2] + margin)))  
+right_lane_inds = ((nonzerox > (right_fit[0]*(nonzeroy**2) + right_fit[1]*nonzeroy + right_fit[2] - margin)) 
+                 & (nonzerox < (right_fit[0]*(nonzeroy**2) + right_fit[1]*nonzeroy + right_fit[2] + margin)))  
 
 # Again, extract left and right line pixel positions
 leftx = nonzerox[left_lane_inds]
@@ -160,6 +166,57 @@ plt.plot(left_fitx, ploty, color='yellow')
 plt.plot(right_fitx, ploty, color='yellow')
 plt.xlim(0, 1280)
 plt.ylim(720, 0)
+plt.savefig('output_images/findCurvesNVisualize.jpg', bbox_inches='tight')
+
+#----------------------------------------
+# Calculate curvature and distance to center
+#----------------------------------------
+# Define y-value where we want radius of curvature
+# I'll choose the maximum y-value, corresponding to the bottom of the image
+y_eval = np.max(ploty)
+left_curverad = ((1 + (2*left_fit[0]*y_eval + left_fit[1])**2)**1.5) / np.absolute(2*left_fit[0])
+right_curverad = ((1 + (2*right_fit[0]*y_eval + right_fit[1])**2)**1.5) / np.absolute(2*right_fit[0])
+print(left_curverad, right_curverad)
+# Define conversions in x and y from pixels space to meters
+ym_per_pix = 30/720 # meters per pixel in y dimension
+xm_per_pix = 3.7/700 # meters per pixel in x dimension
+
+# Fit new polynomials to x,y in world space
+left_fit_cr = np.polyfit(ploty*ym_per_pix, left_fitx*xm_per_pix, 2)
+right_fit_cr = np.polyfit(ploty*ym_per_pix, right_fitx*xm_per_pix, 2)
+# Calculate the new radii of curvature
+left_curverad = ((1 + (2*left_fit_cr[0]*y_eval*ym_per_pix + left_fit_cr[1])**2)**1.5) / np.absolute(2*left_fit_cr[0])
+right_curverad = ((1 + (2*right_fit_cr[0]*y_eval*ym_per_pix + right_fit_cr[1])**2)**1.5) / np.absolute(2*right_fit_cr[0])
+# Now our radius of curvature is in meters
+print(left_curverad, 'm', right_curverad, 'm')
 
 
+carPos = width/2
+left_x = left_fit[0]*height**2 + left_fit[1]*height + left_fit[2]
+right_x = right_fit[0]*height**2 + right_fit[1]*height + right_fit[2]
+laneCenter = (left_x + right_x) /2
+DistanceInImage = np.abs(carPos-laneCenter)
+DistanceInLife = xm_per_pix*DistanceInImage
+#----------------------------------------
+# Visualize the lane
+#----------------------------------------
+# Create an image to draw the lines on
+warp_zero = np.zeros_like(binary_warped).astype(np.uint8)
+color_warp = np.dstack((warp_zero, warp_zero, warp_zero))
 
+# Recast the x and y points into usable format for cv2.fillPoly()
+pts_left = np.array([np.transpose(np.vstack([left_fitx, ploty]))])
+pts_right = np.array([np.flipud(np.transpose(np.vstack([right_fitx, ploty])))])
+pts = np.hstack((pts_left, pts_right))
+
+# Draw the lane onto the warped blank image
+cv2.fillPoly(color_warp, np.int_([pts]), (0,255, 0))
+undist = cv2.imread('./test_images/undistorted_test2.jpg')
+undist = cv2.cvtColor(undist, cv2.COLOR_BGR2RGB)
+
+# Warp the blank back to original image space using inverse perspective matrix (Minv)
+newwarp = cv2.warpPerspective(color_warp, Minv, (width, height)) 
+# Combine the result with the original image
+result = cv2.addWeighted(undist, 1, newwarp, 0.3, 0)
+plt.imshow(result)
+plt.savefig('output_images/LaneVisualized.jpg', bbox_inches='tight')

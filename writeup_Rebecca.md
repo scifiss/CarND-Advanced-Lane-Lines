@@ -159,9 +159,10 @@ ym_per_pix = 30/720 # meters per pixel in y dimension
 xm_per_pix = 3.7/700 # meters per pixel in x dimension
 ```
 The polynomial fitting is computed again with data in the world space, and so are the curvatures. 
-The curvature for test2 is: left 1230.46982432m and right: 1486.342089683 m
+- The curvature for test2 is: left 1230.46982432m and right: 1486.342089683 m
+
 Now compute the distance between the middle of the vehicle and the center of the lane. The camera is installed in the middle of the car, so the car's position is in the center (bottom) of the image. The car is at the bottom of the image, so image height is applied to the fitting polynomials to get the two lane line positions in the image. The lane center is in the middle of the two lines. The distance in the image is transformed into the world space by again `xm_per_pix` = 3.7/700.
-The distance of the car to the lane center is 0.084 m in test2.
+- The distance of the car to the lane center is 0.084 m in test2.
 
 #### 6. Provide an example image of your result plotted back down onto the road such that the lane area is identified clearly.
 

@@ -40,9 +40,7 @@ for idx, filename in enumerate(calImages):
     if ret == True:
         image_corners = cv2.drawChessboardCorners(image, (nx,ny), corners, ret)
         #plt.imshow(image_corners)
-        cv2.imwrite('./camera_cal/FoundCorners_'+str(idx)+'_'+imagename,image_corners)
-        # save one resulted image to output        
-        #misc.imsave('output_images/' + 'image_withDetectedCorners.jpg', image_corners)
+        cv2.imwrite('./camera_cal/FoundCorners_'+str(idx)+'_'+imagename,image_corners)        
         # 'cornerSubPix' is supposed to refine the corner locations, but I see no difference in corners and corners2 for each image
         #corners2=cv2.cornerSubPix(gray,corners, (11,11), (-1,-1), criteria)
         #image_corners = cv2.drawChessboardCorners(image, (nx,ny), corners2, ret)
@@ -57,6 +55,21 @@ for idx, filename in enumerate(calImages):
 # dist: distortion coeff
 # rvecs and tvecs: rotation and translation vectors
 ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, (width, height), None, None)
+
+# show the result
+img = mpimg.imread('camera_cal\calibration3.jpg')
+undist = cv2.undistort(img, mtx, dist, None, mtx) 
+cv2.imwrite('./output_images/Undist_calibration3.jpg',undist)
+
+#f, (ax1, ax2) = plt.subplots(1, 2, figsize=(24, 9))
+#f.tight_layout()
+#ax1.imshow(img)
+#ax1.set_title('Original Image', fontsize=50)
+#ax2.imshow(undist)
+#ax2.set_title('Undistorted Image', fontsize=50)
+#plt.subplots_adjust(left=0., right=1, top=0.9, bottom=0.)
+#plt.savefig('output_images/Undist_calibration3.jpg')
+
 
 # save the results for later use by serializing the object hierarchy using pickle
 dist_pickle = {}

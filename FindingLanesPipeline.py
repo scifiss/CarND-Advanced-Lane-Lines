@@ -17,39 +17,24 @@ import pickle
 ## camera calibration
 #----------------------------------------
 # CameraCalibration.py
-
-
-
 camCali_data = pickle.load(open('./calibration_pickle.p','rb'))
 dist = camCali_data['dist']
 mtx = camCali_data['mtx']
 
-image = mpimg.imread('camera_cal\calibration1.jpg')
-height, width, chann = image.shape
+  
+#----------------------------------------
+## gradient & color threshold
+#----------------------------------------        
 
-
+#----------------------------------------
+## perspective transform
+#----------------------------------------
+ 
+# UndistAndPerspTransf.py
 def gen_mask(img, threshold):
     themask = np.zeros_like(img)
     themask[(img>=threshold[0]) & (img<=threshold[1])] = 1
     return themask
-
-# Define a function that applies Sobel x and y, 
-# then computes the direction of the gradient
-# and applies a threshold.
-def dir_threshold(img, sobel_kernel=3, thresh=(0, np.pi/2)):
-    # Grayscale
-    gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
-    # Calculate the x and y gradients
-    sobelx = cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=sobel_kernel)
-    sobely = cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize=sobel_kernel)
-    # Take the absolute value of the gradient direction, 
-    # apply a threshold, and create a binary image result
-    absgraddir = np.arctan2(np.absolute(sobely), np.absolute(sobelx))
-    binary_output = gen_mask(absgraddir, thresh)
-
-    return binary_output
-
-
 def color_threshold(img, sthresh=(0,255), vthresh=(0,255)):
     hls = cv2.cvtColor(img, cv2.COLOR_RGB2HLS)
     #s
@@ -76,76 +61,100 @@ def abs_sobel_thresh(img, orient='x', sobel_kernel=3, thresh=(0, 255)):
     binary_output = gen_mask(scaled_sobel, thresh)
     return binary_output
 
-# Define a function that applies Sobel x and y, 
-# then computes the magnitude of the gradient
-# and applies a threshold
-def mag_thresh(img, sobel_kernel=3, thresh=(0, 255)):
-    # Convert to grayscale
-    gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
-    # Take both Sobel x and y gradients
-    sobelx = cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=sobel_kernel)
-    sobely = cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize=sobel_kernel)
-    # Calculate the gradient magnitude
-    gradmag = np.sqrt(sobelx**2 + sobely**2)    
-    # Rescale to 8 bit
-    scale_factor = np.max(gradmag)/255    
-    gradmag = (gradmag/scale_factor).astype(np.uint8) 
-    # Create a binary image of ones where threshold is met, zeros otherwise
-    binary_output = gen_mask(gradmag, thresh)
+def transformPipeline(img, mtx, dist, sthresh, vthresh,sobel_kernel, xthresh, ythresh, perspective_M):
     
-    return binary_output
+    height, width, chann = img.shape
 
-testImages = glob.glob('./test_images/test*.jpg')
-
-for idx, filename in enumerate(testImages):
-    img = mpimg.imread( filename)  # read as RGB
-    imagename = filename.split('\\')[-1]
-
-#----------------------------------------
-## distortion correction
-#----------------------------------------    
-    undist = cv2.undistort(img, mtx, dist, None, mtx) # show as RGB  
-    
-#----------------------------------------
-## gradient & color threshold
-#----------------------------------------        
-    # generate masked images that highlight the lanes
-    preprocessed = np.zeros_like(img[:,:,0])
+    undist = cv2.undistort(img, mtx, dist, None, mtx) # show as RGB
+    preprocessed = np.zeros_like(undist[:,:,0])
     # gradient on x and y direction
-    gradx = abs_sobel_thresh(img, orient='x', sobel_kernel=3, thresh=(12, 255))    
-   
-    grady = abs_sobel_thresh(img, orient='y', sobel_kernel=3, thresh=(25, 255))   
-    
-    # magnitude of the gradient at 45degree
-    mag_binary = mag_thresh(img, sobel_kernel=3, thresh=(30, 100))
-   
-    # direction of the gradient
-    dir_binary = dir_threshold(img, sobel_kernel = 15, thresh=(0.5,1))
-    
-    # color threshold on saturation and value channel
-    col_binary = color_threshold(img, sthresh=(100,255),vthresh=(50,255))
+    gradx = abs_sobel_thresh(undist, 'x', sobel_kernel, xthresh)    
+    grady = abs_sobel_thresh(undist, 'y', sobel_kernel, ythresh) 
+    col_binary = color_threshold(undist, sthresh,vthresh)
     masked = ((gradx==1) & (grady==1)) | (col_binary==1)
-    preprocessed[masked] = 255
-    mpimg.imsave('./test_images/preprocessed_'+imagename,preprocessed,cmap='gray')  
+    preprocessed[masked] = 1
     
-    btm_width =  0.57  #0.76
-    top_width = 0.08 
-    top_pct = 0.63  # 0.62
-    btm_pct = 0.914 # 0.935
-    src = np.float32([ [width * (0.5-top_width/2), height*top_pct], [width*(0.5+top_width/2), height*top_pct], \
-                      [width * (0.5-btm_width/2), height*btm_pct], [width*(0.5+btm_width/2), height*btm_pct] ])
-    offset = width*0.33  #width* (0.5-btm_width/2)
-    dst =np.float32([ [offset,0], [width-offset,0], [width-offset, height], [offset, height]])
-    
-#----------------------------------------
-## perspective transform
-#----------------------------------------
-    M = cv2.getPerspectiveTransform(src, dst) 
-    warped = cv2.warpPerspective(preprocessed, M, ( width, height), flags=cv2.INTER_LINEAR)
-    mpimg.imsave('./test_images/warped_'+imagename,warped,cmap='gray')  
+    unwarped = cv2.warpPerspective(preprocessed, perspective_M, ( width, height), flags=cv2.INTER_LINEAR)
+    return unwarped
 
     
 #----------------------------------------
 ## detect lane lines
+# Define a class to receive the characteristics of each line detection
+class Line():
+    def __init__(self):
+        # was the line detected in the last iteration?
+        self.detected = False  
+        # x values of the last n fits of the line
+        self.recent_xfitted = [] 
+        #average x values of the fitted line over the last n iterations
+        self.bestx = None     
+        #polynomial coefficients averaged over the last n iterations
+        self.best_fit = None  
+        #polynomial coefficients for the most recent fit
+        self.current_fit = [np.array([False])]  
+        #radius of curvature of the line in some units
+        self.radius_of_curvature = None 
+        #distance in meters of vehicle center from the line
+        self.line_base_pos = None 
+        #difference in fit coefficients between last and new fits
+        self.diffs = np.array([0,0,0], dtype='float') 
+        #x values for detected line pixels
+        self.allx = None  
+        #y values for detected line pixels
+        self.ally = None
+
+# Define a class to receive the characteristics of each line detection
+class Line():
+    def __init__(self):
+        # was the line detected in the last iteration?
+        self.detected = False  
+        # x values of the last n fits of the line
+        self.recent_xfitted = [] 
+        #average x values of the fitted line over the last n iterations
+        self.bestx = None     
+        #polynomial coefficients averaged over the last n iterations
+        self.best_fit = None  
+        #polynomial coefficients for the most recent fit
+        self.current_fit = []  
+        #radius of curvature of the line in some units
+        self.radius_of_curvature = None 
+        #distance in meters of vehicle center from the line
+        self.line_base_pos = None 
+        #difference in fit coefficients between last and new fits
+        self.diffs = np.array([0,0,0], dtype='float') 
+        #number of detected pixels
+        self.px_count = None
+    def add_fit(self, fit, inds):
+        # add a found fit to the line, up to n
+        if fit is not None:
+            if self.best_fit is not None:
+                # if we have a best fit, see how this new fit compares
+                self.diffs = abs(fit-self.best_fit)
+            if (self.diffs[0] > 0.001 or \
+               self.diffs[1] > 1.0 or \
+               self.diffs[2] > 100.) and \
+               len(self.current_fit) > 0:
+                # bad fit! abort! abort! ... well, unless there are no fits in the current_fit queue, then we'll take it
+                self.detected = False
+            else:
+                self.detected = True
+                self.px_count = np.count_nonzero(inds)
+                self.current_fit.append(fit)
+                if len(self.current_fit) > 5:
+                    # throw out old fits, keep newest n
+                    self.current_fit = self.current_fit[len(self.current_fit)-5:]
+                self.best_fit = np.average(self.current_fit, axis=0)
+        # or remove one from the history, if not found
+        else:
+            self.detected = False
+            if len(self.current_fit) > 0:
+                # throw out oldest fit
+                self.current_fit = self.current_fit[:len(self.current_fit)-1]
+            if len(self.current_fit) > 0:
+                # if there are still any fits in the queue, best_fit is their average
+                self.best_fit = np.average(self.current_fit, axis=0)
+
+
 
 ## determine lane curvature
