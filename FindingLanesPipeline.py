@@ -104,10 +104,6 @@ class Line():
         self.line_base_pos = None 
         #difference in fit coefficients between last and new fits
         self.diffs = np.array([0,0,0], dtype='float') 
-        #x values for detected line pixels
-        self.allx = None  
-        #y values for detected line pixels
-        self.ally = None
     def update_fit(self, newfit, inds):
         # add a new fit to the line fitting history, up to nlastfit recent fits
         if newfit is not None:
@@ -116,18 +112,17 @@ class Line():
             if self.diffs[0] > 0.0001 and len(self.current_fit) > 0:
                 self.detected = False
             else:
-                self.detected = True
-                #self.allx = np.count_nonzero(inds)
+                self.detected = True               
                 self.current_fit.append(newfit)
                 if len(self.current_fit) > nlastfit:
-                    # throw out old fits, keep newest 
+                    # throw out old fits, keep nlastfit newest 
                     self.current_fit = self.current_fit[len(self.current_fit)-nlastfit:]
                 self.best_fit = np.average(self.current_fit, axis=0)
-        # or remove one from the history, if not found
+        # remove one from the history
         else:
             self.detected = False
             if len(self.current_fit) > 0:
-                # throw out oldest fit
+                # throw out one oldest fit
                 self.current_fit = self.current_fit[:len(self.current_fit)-1]
             if len(self.current_fit) > 0:
                 # if there are still any fits in the queue, best_fit is their average
@@ -278,13 +273,11 @@ def VisualizeLane(undist,ploty,left_fitx,right_fitx,width, height,avg_curverad,D
     
     # Draw the lane onto the warped blank image
     cv2.fillPoly(color_warp, np.int_([pts]), (0,255, 0))
-#    undist = cv2.imread('./test_images/undistorted_test2.jpg')
-#    undist = cv2.cvtColor(undist, cv2.COLOR_BGR2RGB)
-    
+   
     # Warp the blank back to original image space using inverse perspective matrix (Minv)
     newwarp = cv2.warpPerspective(color_warp, Minv, (width, height)) 
     # Combine the result with the original image
-    result = cv2.addWeighted(result, 1, newwarp, 0.3, 0)
+    result = cv2.addWeighted(undist, 1, newwarp, 0.3, 0)
     
     info = 'Radius of Curvature = '+ '{:05.3f}'.format(avg_curverad)+'m'
     cv2.putText(result, info, (50,50), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (255,255,0), 3, 8)
@@ -315,16 +308,7 @@ def process_image(image):
         
     else:
         left_fit, right_fit,left_lane_inds,right_lane_inds = findingLanesbyPrefit(unwarped, leftLine.best_fit, rightLine.best_fit)
-        # invalidate both fits if the difference in their x-intercepts isn't around 350 px (+/- 100 px)
-#    if left_fit is not None and left_fit is not None:
-#        # calculate x-intercept (bottom of image, x=image_height) for fits
-#        
-#        left_fit_x_int = left_fit[0]*h**2 + left_fit[1]*h + left_fit[2]
-#        right_fit_x_int = right_fit[0]*h**2 + right_fit[1]*h + right_fit[2]
-#        x_int_diff = abs(right_fit_x_int-left_fit_x_int)
-#        if abs(350 - x_int_diff) > 100:
-#            left_fit = None
-#            right_fit = None
+
             
     leftLine.update_fit(left_fit, left_lane_inds)
     rightLine.update_fit(right_fit, right_lane_inds)
@@ -341,82 +325,8 @@ def process_image(image):
     else:
         result = np.copy(image)
     
-#    diagnostic_output = False
-#    if diagnostic_output:
-#        # put together multi-view output
-#        diag_img = np.zeros((720,1280,3), dtype=np.uint8)
-#        
-#        # original output (top left)
-#        diag_img[0:360,0:640,:] = cv2.resize(img_out,(640,360))
-#        
-#        # binary overhead view (top right)
-#        img_bin = np.dstack((img_bin*255, img_bin*255, img_bin*255))
-#        resized_img_bin = cv2.resize(img_bin,(640,360))
-#        diag_img[0:360,640:1280, :] = resized_img_bin
-#        
-#        # overhead with all fits added (bottom right)
-#        img_bin_fit = np.copy(img_bin)
-#        for i, fit in enumerate(leftLine.current_fit):
-#            img_bin_fit = plot_fit_onto_img(img_bin_fit, fit, (20*i+100,0,20*i+100))
-#        for i, fit in enumerate(rightLine.current_fit):
-#            img_bin_fit = plot_fit_onto_img(img_bin_fit, fit, (0,20*i+100,20*i+100))
-#        img_bin_fit = plot_fit_onto_img(img_bin_fit, leftLine.best_fit, (255,255,0))
-#        img_bin_fit = plot_fit_onto_img(img_bin_fit, rightLine.best_fit, (255,255,0))
-#        diag_img[360:720,640:1280,:] = cv2.resize(img_bin_fit,(640,360))
-#        
-#        # diagnostic data (bottom left)
-#        color_ok = (200,255,155)
-#        color_bad = (255,155,155)
-#        font = cv2.FONT_HERSHEY_DUPLEX
-#        if left_fit is not None:
-#            text = 'This fit L: ' + ' {:0.6f}'.format(left_fit[0]) + \
-#                                    ' {:0.6f}'.format(left_fit[1]) + \
-#                                    ' {:0.6f}'.format(left_fit[2])
-#        else:
-#            text = 'This fit L: None'
-#        cv2.putText(diag_img, text, (40,380), font, .5, color_ok, 1, cv2.LINE_AA)
-#        if right_fit is not None:
-#            text = 'This fit R: ' + ' {:0.6f}'.format(right_fit[0]) + \
-#                                    ' {:0.6f}'.format(right_fit[1]) + \
-#                                    ' {:0.6f}'.format(right_fit[2])
-#        else:
-#            text = 'This fit R: None'
-#        cv2.putText(diag_img, text, (40,400), font, .5, color_ok, 1, cv2.LINE_AA)
-#        text = 'Best fit L: ' + ' {:0.6f}'.format(leftLine.best_fit[0]) + \
-#                                ' {:0.6f}'.format(leftLine.best_fit[1]) + \
-#                                ' {:0.6f}'.format(leftLine.best_fit[2])
-#        cv2.putText(diag_img, text, (40,440), font, .5, color_ok, 1, cv2.LINE_AA)
-#        text = 'Best fit R: ' + ' {:0.6f}'.format(rightLine.best_fit[0]) + \
-#                                ' {:0.6f}'.format(rightLine.best_fit[1]) + \
-#                                ' {:0.6f}'.format(rightLine.best_fit[2])
-#        cv2.putText(diag_img, text, (40,460), font, .5, color_ok, 1, cv2.LINE_AA)
-#        text = 'Diffs L: ' + ' {:0.6f}'.format(leftLine.diffs[0]) + \
-#                             ' {:0.6f}'.format(leftLine.diffs[1]) + \
-#                             ' {:0.6f}'.format(leftLine.diffs[2])
-#        if leftLine.diffs[0] > 0.001 or \
-#           leftLine.diffs[1] > 1.0 or \
-#           leftLine.diffs[2] > 100.:
-#            diffs_color = color_bad
-#        else:
-#            diffs_color = color_ok
-#        cv2.putText(diag_img, text, (40,500), font, .5, diffs_color, 1, cv2.LINE_AA)
-#        text = 'Diffs R: ' + ' {:0.6f}'.format(rightLine.diffs[0]) + \
-#                             ' {:0.6f}'.format(rightLine.diffs[1]) + \
-#                             ' {:0.6f}'.format(rightLine.diffs[2])
-#        if rightLine.diffs[0] > 0.001 or \
-#           rightLine.diffs[1] > 1.0 or \
-#           rightLine.diffs[2] > 100.:
-#            diffs_color = color_bad
-#        else:
-#            diffs_color = color_ok
-#        cv2.putText(diag_img, text, (40,520), font, .5, diffs_color, 1, cv2.LINE_AA)
-#        text = 'Good fit count L:' + str(len(leftLine.current_fit))
-#        cv2.putText(diag_img, text, (40,560), font, .5, color_ok, 1, cv2.LINE_AA)
-#        text = 'Good fit count R:' + str(len(rightLine.current_fit))
-#        cv2.putText(diag_img, text, (40,580), font, .5, color_ok, 1, cv2.LINE_AA)
-#        
-#        img_out = diag_img
-        return result
+
+    return result
 
 
     #if not leftLine.    
@@ -426,6 +336,14 @@ leftLine = Line()
 rightLine = Line()
 #my_clip.write_gif('test.gif', fps=12)
 
-video_input = VideoFileClip('project_video.mp4')#.subclip(22,26)
+video_input = VideoFileClip('project_video.mp4')
 video_clip = video_input.fl_image(process_image)
 video_clip.write_videofile('project_video_output.mp4',audio=False)
+
+video_input = VideoFileClip('challenge_video.mp4')
+video_clip = video_input.fl_image(process_image)
+video_clip.write_videofile('challenge_video_output.mp4',audio=False)
+
+video_input = VideoFileClip('harder_challenge_video.mp4')
+video_clip = video_input.fl_image(process_image)
+video_clip.write_videofile('harder_challenge_video_output.mp4',audio=False)
